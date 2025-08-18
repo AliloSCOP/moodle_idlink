@@ -11,6 +11,11 @@ if ($courseidnum) {
     $course = $DB->get_record('course', ['idnumber' => $courseidnum], '*', MUST_EXIST);
     require_login($course);
 
+    if($idnumber === '' || $idnumber === null) {
+        // Si l'idnumber est vide, on redirige vers le cours.
+        redirect(new moodle_url('/course/view.php', ['id' => $course->id]));
+    }
+
     $modinfo = get_fast_modinfo($course);
     foreach ($modinfo->get_cms() as $cm) {
         if ($cm->idnumber === $idnumber && $cm->uservisible) {
