@@ -1,8 +1,10 @@
 <?php
 require(__DIR__ . '/../../config.php');
 
-$idnumber = required_param('idnum', PARAM_RAW_TRIMMED); // idnumber du module (course_modules.idnumber).
-$courseidnum = optional_param('courseidnum', '', PARAM_RAW_TRIMMED); // idnumber du cours.
+$idnumber = optional_param('idnum',null, PARAM_RAW_TRIMMED); // idnumber du module (course_modules.idnumber).
+$courseidnum = optional_param('courseidnum', null, PARAM_RAW_TRIMMED); // idnumber du cours.
+$showParentSection = optional_param('showparentsection', 0, PARAM_BOOL); // afficher la section parente.
+
 
 // Si un courseidnum est fourni : on cherche uniquement dans ce cours via l'API rapide.
 if ($courseidnum) {
@@ -20,7 +22,13 @@ if ($courseidnum) {
     foreach ($modinfo->get_cms() as $cm) {
         if ($cm->idnumber === $idnumber && $cm->uservisible) {
             // OK : l'utilisateur a le droit de voir, on redirige.
-            redirect(new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]));
+            if ($showParentSection && $cm->sectionnum > 0) {
+                // Rediriger vers la section parente du module
+                redirect(new moodle_url('/course/view.php', ['id' => $course->id, 'section' => $cm->sectionnum]));
+            } else {
+                // Rediriger directement vers le module
+                redirect(new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]));
+            }
         }
     }
 
@@ -65,7 +73,14 @@ if ($count === 0) {
     exit;
 } elseif ($count === 1) {
     $cm = $matches[0];
-    redirect(new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]));
+    if ($showParentSection && $cm->sectionnum > 0) {
+        // Rediriger vers la section parente du module
+        $course = get_course($cm->course);
+        redirect(new moodle_url('/course/view.php', ['id' => $course->id, 'section' => $cm->sectionnum]));
+    } else {
+        // Rediriger directement vers le module
+        redirect(new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]));
+    }
     exit;
 }
 
@@ -82,7 +97,13 @@ echo $OUTPUT->heading('Plusieurs activités correspondent à l’idnumber : ' . 
 $list = [];
 foreach ($matches as $cm) {
     $course = get_course($cm->course);
-    $url = new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]);
+    if ($showParentSection && $cm->sectionnum > 0) {
+        // Lien vers la section parente du module
+        $url = new moodle_url('/course/view.php', ['id' => $course->id, 'section' => $cm->sectionnum]);
+    } else {
+        // Lien direct vers le module
+        $url = new moodle_url('/mod/' . $cm->modname . '/view.php', ['id' => $cm->id]);
+    }
     $list[] = html_writer::link($url, format_string($course->fullname) . ' — ' . format_string($cm->name));
 }
 echo html_writer::alist($list);
